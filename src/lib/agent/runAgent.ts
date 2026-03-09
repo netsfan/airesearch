@@ -82,7 +82,7 @@ export async function runAgent(input: AgentInput): Promise<AgentResponse> {
 
     pendingInput = functionCalls.map(({ callId, call }) => {
       const result = executeTool(call, { selectedTable: input.selectedTable });
-      if (call.name === "create_notebook_cell" && result.notebookCell?.content) {
+      if (call.name === "create_notebook_cell" && "notebookCell" in result && result.notebookCell?.content) {
         createdNotebookCell = result.notebookCell;
       }
 
