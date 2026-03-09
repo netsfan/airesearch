@@ -15,6 +15,7 @@ export type NotebookCellType = "markdown" | "sql";
 export type NotebookCell = {
   id: string;
   type: NotebookCellType;
+  title?: string;
   content: string;
   output?: string;
 };
