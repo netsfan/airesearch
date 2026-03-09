@@ -2,9 +2,11 @@ import { runAgent } from "@/lib/agent/runAgent";
 import type { AgentInput } from "@/lib/agent/types";
 import { NextResponse } from "next/server";
 
+type RawAgentInput = Partial<AgentInput>;
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as AgentInput;
+    const body = (await request.json()) as RawAgentInput;
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -13,14 +15,22 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!body?.message) {
+    if (!body?.message || typeof body.message !== "string") {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
     }
 
+    const notebookContext = Array.isArray(body.notebookContext)
+      ? body.notebookContext
+          .filter((cell): cell is { type: "markdown" | "sql"; content: string } => {
+            return Boolean(cell && typeof cell.content === "string" && (cell.type === "markdown" || cell.type === "sql"));
+          })
+          .slice(-3)
+      : [];
+
     const result = await runAgent({
       message: body.message,
-      selectedTable: body.selectedTable,
-      notebookContext: body.notebookContext ?? []
+      selectedTable: typeof body.selectedTable === "string" ? body.selectedTable : undefined,
+      notebookContext
     });
 
     return NextResponse.json(result);

@@ -17,7 +17,7 @@ export async function createResponse(params: {
   input: ResponseInputItem[];
   tools: unknown[];
   previousResponseId?: string;
-}) {
+}): Promise<{ id?: string; output?: unknown[] }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not set.");
@@ -42,5 +42,5 @@ export async function createResponse(params: {
     throw new Error(`OpenAI error: ${response.status} ${text}`);
   }
 
-  return response.json();
+  return (await response.json()) as { id?: string; output?: unknown[] };
 }

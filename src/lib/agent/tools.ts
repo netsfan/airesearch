@@ -1,7 +1,7 @@
 import { getTableSummary } from "@/lib/data/getTableSummary";
 import { mockSources } from "@/lib/data/mockTables";
 import type { NotebookCellType } from "@/types";
-import type { ToolCall } from "./types";
+import type { AgentExecutionContext, ToolCall } from "./types";
 
 export const agentTools = [
   {
@@ -43,7 +43,7 @@ export const agentTools = [
   }
 ];
 
-export function executeTool(call: ToolCall) {
+export function executeTool(call: ToolCall, context: AgentExecutionContext) {
   if (call.name === "list_tables") {
     return {
       tables: mockSources.flatMap((source) =>
@@ -58,12 +58,14 @@ export function executeTool(call: ToolCall) {
   }
 
   if (call.name === "summarize_table") {
-    const tableName = String(call.arguments.tableName ?? "");
+    const requestedTableName = String(call.arguments.tableName ?? "").trim();
+    const tableName = requestedTableName || context.selectedTable || "";
     return getTableSummary(tableName);
   }
 
   const cellType = call.arguments.cellType === "sql" ? "sql" : "markdown";
-  const content = String(call.arguments.content ?? "");
+  const content = String(call.arguments.content ?? "").trim();
+
   return {
     notebookCell: {
       type: cellType as NotebookCellType,

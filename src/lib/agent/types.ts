@@ -14,7 +14,13 @@ export type AgentResponse = {
   };
 };
 
+export type ToolName = "list_tables" | "summarize_table" | "create_notebook_cell";
+
 export type ToolCall = {
-  name: "list_tables" | "summarize_table" | "create_notebook_cell";
+  name: ToolName;
   arguments: Record<string, unknown>;
+};
+
+export type AgentExecutionContext = {
+  selectedTable?: string;
 };

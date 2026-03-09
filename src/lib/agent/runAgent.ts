@@ -1,10 +1,22 @@
 import { createResponse, type ResponseInputItem } from "@/lib/utils/openai";
 import { buildSystemPrompt, buildUserContext } from "./prompts";
 import { agentTools, executeTool } from "./tools";
-import type { AgentInput, AgentResponse, ToolCall } from "./types";
+import type { AgentInput, AgentResponse, ToolCall, ToolName } from "./types";
 
-function parseFunctionCall(item: any): ToolCall | null {
-  if (item?.type !== "function_call" || !item.name) return null;
+type ResponseOutputItem = {
+  type?: string;
+  role?: string;
+  name?: string;
+  call_id?: string;
+  arguments?: string;
+  content?: Array<{ type?: string; text?: string }>;
+};
+
+const ALLOWED_TOOLS: ToolName[] = ["list_tables", "summarize_table", "create_notebook_cell"];
+
+function parseFunctionCall(item: ResponseOutputItem): { callId: string; call: ToolCall } | null {
+  if (item.type !== "function_call" || !item.name || !item.call_id) return null;
+  if (!ALLOWED_TOOLS.includes(item.name as ToolName)) return null;
 
   let parsedArguments: Record<string, unknown> = {};
   try {
@@ -13,15 +25,19 @@ function parseFunctionCall(item: any): ToolCall | null {
     parsedArguments = {};
   }
 
-  if (!["list_tables", "summarize_table", "create_notebook_cell"].includes(item.name)) return null;
-
-  return { name: item.name, arguments: parsedArguments } as ToolCall;
+  return {
+    callId: item.call_id,
+    call: {
+      name: item.name as ToolName,
+      arguments: parsedArguments
+    }
+  };
 }
 
-function extractAssistantText(output: any[]): string {
+function extractAssistantText(output: ResponseOutputItem[]): string {
   for (const item of output) {
     if (item.type === "message" && item.role === "assistant") {
-      const textItem = item.content?.find((contentItem: any) => contentItem.type === "output_text");
+      const textItem = item.content?.find((contentItem) => contentItem.type === "output_text");
       if (textItem?.text) return textItem.text;
     }
   }
@@ -52,13 +68,10 @@ export async function runAgent(input: AgentInput): Promise<AgentResponse> {
       previousResponseId
     });
 
-    previousResponseId = response.id;
-    const output = response.output ?? [];
+    previousResponseId = typeof response.id === "string" ? response.id : undefined;
+    const output = Array.isArray(response.output) ? (response.output as ResponseOutputItem[]) : [];
 
-    const functionCalls = output
-      .filter((item: any) => item.type === "function_call")
-      .map((item: any) => ({ raw: item, parsed: parseFunctionCall(item) }))
-      .filter((entry: any) => Boolean(entry.parsed));
+    const functionCalls = output.map(parseFunctionCall).filter((entry): entry is { callId: string; call: ToolCall } => Boolean(entry));
 
     if (functionCalls.length === 0) {
       return {
@@ -67,14 +80,15 @@ export async function runAgent(input: AgentInput): Promise<AgentResponse> {
       };
     }
 
-    pendingInput = functionCalls.map((entry: any) => {
-      const result = executeTool(entry.parsed as ToolCall);
-      if (entry.parsed.name === "create_notebook_cell" && result.notebookCell) {
+    pendingInput = functionCalls.map(({ callId, call }) => {
+      const result = executeTool(call, { selectedTable: input.selectedTable });
+      if (call.name === "create_notebook_cell" && result.notebookCell?.content) {
         createdNotebookCell = result.notebookCell;
       }
+
       return {
         type: "function_call_output",
-        call_id: entry.raw.call_id,
+        call_id: callId,
         output: JSON.stringify(result)
       };
     });

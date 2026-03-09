@@ -18,8 +18,8 @@ Minimal single-app Next.js MVP with a tool-using data agent.
 ## Run locally
 
 ```bash
-npm install
-npm run dev
+yarn install
+yarn dev
 ```
 
 Open `http://localhost:3000`.
