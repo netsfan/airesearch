@@ -1,28 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { DataSource, TableSchema } from "@/types";
+import type { DataSource, TableData } from "@/types";
 
-type DataSourcesPaneProps = {
+type Props = {
   sources: DataSource[];
+  selectedTable?: TableData;
+  onSelectTable: (table: TableData) => void;
 };
 
-export default function DataSourcesPane({ sources }: DataSourcesPaneProps) {
+export default function DataSourcesPane({ sources, selectedTable, onSelectTable }: Props) {
   const [expandedSourceIds, setExpandedSourceIds] = useState<string[]>([sources[0]?.id ?? ""]);
-  const [selectedTable, setSelectedTable] = useState<TableSchema | null>(sources[0]?.tables[0] ?? null);
 
   const selectedColumns = useMemo(() => selectedTable?.columns ?? [], [selectedTable]);
 
-  const toggleSource = (sourceId: string) => {
-    setExpandedSourceIds((previous) =>
-      previous.includes(sourceId) ? previous.filter((id) => id !== sourceId) : [...previous, sourceId]
-    );
+  const toggleSource = (id: string) => {
+    setExpandedSourceIds((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
   };
 
   return (
-    <aside className="h-full border-r border-slate-200 bg-white p-4">
+    <aside className="h-full overflow-y-auto border-r border-slate-200 bg-white p-4">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Data Sources</h2>
-
       <div className="space-y-2">
         {sources.map((source) => {
           const isExpanded = expandedSourceIds.includes(source.id);
@@ -43,11 +41,9 @@ export default function DataSourcesPane({ sources }: DataSourcesPaneProps) {
                     return (
                       <li key={table.id}>
                         <button
-                          onClick={() => setSelectedTable(table)}
+                          onClick={() => onSelectTable(table)}
                           className={`w-full rounded px-2 py-1 text-left text-sm ${
-                            isSelected
-                              ? "bg-blue-100 font-medium text-blue-700"
-                              : "text-slate-600 hover:bg-slate-100"
+                            isSelected ? "bg-blue-100 font-medium text-blue-700" : "text-slate-600 hover:bg-slate-100"
                           }`}
                         >
                           {table.name}

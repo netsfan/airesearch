@@ -1,13 +1,14 @@
-export type TableSchema = {
+export type TableData = {
   id: string;
   name: string;
   columns: string[];
+  rows: Record<string, string | number>[];
 };
 
 export type DataSource = {
   id: string;
   name: string;
-  tables: TableSchema[];
+  tables: TableData[];
 };
 
 export type NotebookCellType = "markdown" | "sql";
@@ -25,5 +26,9 @@ export type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
-  insertContent?: string;
+};
+
+export type NotebookMutation = {
+  type: NotebookCellType;
+  content: string;
 };

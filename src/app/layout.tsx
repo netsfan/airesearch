@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AI Research MVP",
-  description: "A simple frontend-only AI research workspace prototype"
+  description: "A simple AI research workspace prototype"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
