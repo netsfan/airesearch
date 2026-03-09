@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ChatPane from "@/components/ChatPane";
 import DataSourcesPane from "@/components/DataSourcesPane";
 import NotebookPane from "@/components/NotebookPane";
@@ -62,16 +62,12 @@ const initialMessages: ChatMessage[] = [
   }
 ];
 
+const STORAGE_KEY = "ai-research-notebook-cells";
+
 const createId = () => Math.random().toString(36).slice(2, 10);
 
 function fakeSqlOutput() {
-  return [
-    "plan | users",
-    "-----|------",
-    "pro  | 320",
-    "team | 140",
-    "free | 980"
-  ].join("\n");
+  return ["plan | users", "-----|------", "pro  | 320", "team | 140", "free | 980"].join("\n");
 }
 
 function generateAssistantReply(prompt: string): { content: string; insertContent: string } {
@@ -89,7 +85,8 @@ function generateAssistantReply(prompt: string): { content: string; insertConten
   if (lower.includes("users")) {
     return {
       content: "I found the users table in your sources. You can join it with events for behavior analysis.",
-      insertContent: "SELECT u.id, u.email, COUNT(e.id) AS events\nFROM users u\nLEFT JOIN events e ON e.user_id = u.id\nGROUP BY u.id, u.email\nLIMIT 50;"
+      insertContent:
+        "SELECT u.id, u.email, COUNT(e.id) AS events\nFROM users u\nLEFT JOIN events e ON e.user_id = u.id\nGROUP BY u.id, u.email\nLIMIT 50;"
     };
   }
 
@@ -99,14 +96,63 @@ function generateAssistantReply(prompt: string): { content: string; insertConten
   };
 }
 
+function getStoredCells(): NotebookCell[] {
+  if (typeof window === "undefined") return initialCells;
+
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (!stored) return initialCells;
+
+  try {
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return initialCells;
+
+    const hydratedCells: NotebookCell[] = parsed
+      .filter((cell): cell is NotebookCell => {
+        if (!cell || typeof cell !== "object") return false;
+
+        const candidate = cell as Partial<NotebookCell>;
+        return (
+          typeof candidate.id === "string" &&
+          (candidate.type === "markdown" || candidate.type === "sql") &&
+          typeof candidate.content === "string"
+        );
+      })
+      .map((cell) => ({
+        id: cell.id,
+        type: cell.type,
+        content: cell.content,
+        title: typeof cell.title === "string" ? cell.title : undefined,
+        output: typeof cell.output === "string" ? cell.output : undefined
+      }));
+
+    return hydratedCells.length > 0 ? hydratedCells : initialCells;
+  } catch {
+    return initialCells;
+  }
+}
+
 export default function Home() {
-  const [cells, setCells] = useState<NotebookCell[]>(initialCells);
+  const [cells, setCells] = useState<NotebookCell[]>(getStoredCells);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
   const title = useMemo(() => "AI Research MVP", []);
 
-  const handleUpdateCell = (id: string, content: string) => {
-    setCells((previous) => previous.map((cell) => (cell.id === id ? { ...cell, content } : cell)));
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cells));
+  }, [cells]);
+
+  const handleUpdateCell = (id: string, updates: { content?: string; title?: string }) => {
+    setCells((previous) =>
+      previous.map((cell) => {
+        if (cell.id !== id) return cell;
+
+        return {
+          ...cell,
+          ...(updates.content !== undefined ? { content: updates.content } : {}),
+          ...(updates.title !== undefined ? { title: updates.title } : {})
+        };
+      })
+    );
   };
 
   const handleRunCell = (id: string) => {
@@ -128,6 +174,25 @@ export default function Home() {
       (type === "sql" ? "SELECT *\nFROM users\nLIMIT 10;" : "## New note\nWrite your analysis here.");
 
     setCells((previous) => [...previous, { id: `cell-${createId()}`, type, content: defaultContent }]);
+  };
+
+  const handleDeleteCell = (id: string) => {
+    setCells((previous) => previous.filter((cell) => cell.id !== id));
+  };
+
+  const handleMoveCell = (id: string, direction: "up" | "down") => {
+    setCells((previous) => {
+      const index = previous.findIndex((cell) => cell.id === id);
+      if (index === -1) return previous;
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= previous.length) return previous;
+
+      const reordered = [...previous];
+      const [moved] = reordered.splice(index, 1);
+      reordered.splice(targetIndex, 0, moved);
+      return reordered;
+    });
   };
 
   const handleSendMessage = (text: string) => {
@@ -156,7 +221,14 @@ export default function Home() {
 
       <div className="grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)_320px]">
         <DataSourcesPane sources={mockSources} />
-        <NotebookPane cells={cells} onUpdateCell={handleUpdateCell} onRunCell={handleRunCell} onAddCell={handleAddCell} />
+        <NotebookPane
+          cells={cells}
+          onUpdateCell={handleUpdateCell}
+          onRunCell={handleRunCell}
+          onAddCell={handleAddCell}
+          onDeleteCell={handleDeleteCell}
+          onMoveCell={handleMoveCell}
+        />
         <ChatPane messages={messages} onSend={handleSendMessage} onInsertIntoNotebook={handleInsertIntoNotebook} />
       </div>
     </main>
