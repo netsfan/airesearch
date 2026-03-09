@@ -1,29 +1,35 @@
 # AI Research MVP
 
-Simple frontend-only MVP for an AI research workspace built with Next.js, React, TypeScript, and Tailwind CSS.
+Minimal single-app Next.js MVP with a tool-using data agent.
 
 ## Features
 
-- 3-pane desktop layout:
-  - **Data Sources** (left)
-  - **Notebook** (middle)
-  - **AI Chat** (right)
-- Expandable mock data sources and tables
-- Notebook with Markdown + SQL cells
-- Fake run behavior for cells
-- Chat with simple rule-based assistant replies
-- "Insert into notebook" action from assistant messages
+- 3-pane layout:
+  - **Data Sources** (left): select table
+  - **Notebook** (middle): markdown/sql cells
+  - **AI Chat** (right): asks backend agent about selected table
+- `POST /api/agent` route using OpenAI Responses API
+- Exactly 3 tools:
+  - `list_tables`
+  - `summarize_table`
+  - `create_notebook_cell`
+- Deterministic table summaries computed server-side from shared mock tables
 
 ## Run locally
 
 ```bash
-yarn install
-yarn dev
+npm install
+npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-## Notes
+## Environment
 
-- No backend, auth, database, or real AI calls
-- All data is mocked in React state
+Set your API key before starting dev server:
+
+```bash
+export OPENAI_API_KEY="your_key_here"
+```
+
+If the key is missing, the chat pane will show a clear error from `/api/agent`.
