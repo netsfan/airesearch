@@ -17,8 +17,8 @@ Simple frontend-only MVP for an AI research workspace built with Next.js, React,
 ## Run locally
 
 ```bash
-npm install
-npm run dev
+yarn install
+yarn dev
 ```
 
 Then open `http://localhost:3000`.
