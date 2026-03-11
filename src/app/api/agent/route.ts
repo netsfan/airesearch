@@ -26,7 +26,10 @@ export async function POST(request: Request) {
           })
           .slice(-3)
       : [];
-
+    console.log("notebookContext", notebookContext);
+    console.log("body.message", body.message);
+    console.log("body.selectedTable", body.selectedTable);
+    console.log("body", body);
     const result = await runAgent({
       message: body.message,
       selectedTable: typeof body.selectedTable === "string" ? body.selectedTable : undefined,

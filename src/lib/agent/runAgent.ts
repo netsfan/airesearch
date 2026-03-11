@@ -67,6 +67,7 @@ export async function runAgent(input: AgentInput): Promise<AgentResponse> {
       tools: agentTools,
       previousResponseId
     });
+    console.log("response", response);
 
     previousResponseId = typeof response.id === "string" ? response.id : undefined;
     const output = Array.isArray(response.output) ? (response.output as ResponseOutputItem[]) : [];
