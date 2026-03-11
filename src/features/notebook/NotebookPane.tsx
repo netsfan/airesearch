@@ -1,62 +1,110 @@
 "use client";
 
-import type { NotebookCell, NotebookCellType } from "@/types";
+import { useEffect, useMemo, useState } from "react";
+import { createJupyterBridge, type BridgeReadyState, type JupyterBridge } from "@/lib/jupyter/bridge";
 
 type Props = {
-  cells: NotebookCell[];
-  onUpdateCell: (id: string, content: string) => void;
-  onRunCell: (id: string) => void;
-  onAddCell: (type: NotebookCellType, content?: string) => void;
+  latestAiCode?: string;
 };
 
-function renderMarkdown(text: string) {
-  return text.split("\n").map((line, index) => {
-    if (line.startsWith("## ")) return <h3 key={index}>{line.replace("## ", "")}</h3>;
-    if (line.startsWith("# ")) return <h2 key={index}>{line.replace("# ", "")}</h2>;
-    if (line.startsWith("- ")) return <li key={index}>{line.replace("- ", "")}</li>;
-    return <p key={index}>{line}</p>;
-  });
-}
+const IFRAME_ID = "jupyterlab-iframe";
 
-export default function NotebookPane({ cells, onUpdateCell, onRunCell, onAddCell }: Props) {
+export default function NotebookPane({ latestAiCode }: Props) {
+  const [bridgeState, setBridgeState] = useState<BridgeReadyState>("idle");
+  const [bridge, setBridge] = useState<JupyterBridge | null>(null);
+  const [feedback, setFeedback] = useState("Bridge not initialized yet.");
+
+  const jupyterUrl = useMemo(() => process.env.NEXT_PUBLIC_JUPYTER_URL ?? "http://localhost:8888/lab", []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const initBridge = async () => {
+      setBridgeState("connecting");
+      try {
+        const nextBridge = await createJupyterBridge(IFRAME_ID);
+        await nextBridge.waitUntilReady();
+        if (isCancelled) return;
+
+        setBridge(nextBridge);
+        setBridgeState("ready");
+        setFeedback("Connected to embedded JupyterLab.");
+      } catch (error) {
+        if (isCancelled) return;
+        const message = error instanceof Error ? error.message : "Unknown bridge initialization error";
+        setBridgeState("error");
+        setFeedback(message);
+      }
+    };
+
+    initBridge();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const runCommand = async (commandId: string) => {
+    if (!bridge) return;
+    try {
+      await bridge.executeCommand(commandId);
+      setFeedback(`Ran command: ${commandId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `Failed to run ${commandId}`;
+      setFeedback(message);
+    }
+  };
+
+  const listCommands = async () => {
+    if (!bridge) return;
+    try {
+      const commands = await bridge.listAvailableCommands();
+      setFeedback(commands.length ? `Available commands (${commands.length}): ${commands.slice(0, 12).join(", ")}` : "No commands reported by Jupyter.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to list commands";
+      setFeedback(message);
+    }
+  };
+
+  const sendAiCodeStub = async () => {
+    if (!bridge || !latestAiCode) {
+      setFeedback("No AI code is queued for notebook insertion yet.");
+      return;
+    }
+
+    try {
+      await bridge.insertAiGeneratedCode(latestAiCode);
+      setFeedback("Sent code to custom Jupyter command ai:insert-and-run-code.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to send AI code to notebook";
+      setFeedback(message);
+    }
+  };
+
   return (
-    <section className="h-full overflow-y-auto p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Notebook</h2>
-        <div className="space-x-2">
-          <button onClick={() => onAddCell("markdown")} className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm">
-            + Markdown
-          </button>
-          <button onClick={() => onAddCell("sql")} className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm">
-            + SQL
-          </button>
-        </div>
+    <section className="flex h-full flex-col border-x border-slate-200 bg-slate-50 p-3">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h2 className="mr-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Notebook</h2>
+        <button onClick={() => runCommand("application:toggle-left-area")} disabled={bridgeState !== "ready"} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">
+          Toggle left sidebar
+        </button>
+        <button onClick={() => runCommand("notebook:create-new")} disabled={bridgeState !== "ready"} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">
+          Create notebook
+        </button>
+        <button onClick={() => runCommand("notebook:insert-cell-below")} disabled={bridgeState !== "ready"} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">
+          Insert cell below
+        </button>
+        <button onClick={listCommands} disabled={bridgeState !== "ready"} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">
+          List commands
+        </button>
+        <button onClick={sendAiCodeStub} disabled={bridgeState !== "ready" || !latestAiCode} className="rounded-md border border-blue-300 bg-blue-50 px-2 py-1 text-xs text-blue-700">
+          Send latest AI code (stub)
+        </button>
       </div>
 
-      <div className="space-y-4">
-        {cells.map((cell) => (
-          <article key={cell.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-600">{cell.type}</span>
-              <button onClick={() => onRunCell(cell.id)} className="rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white">
-                Run
-              </button>
-            </div>
+      <p className="mb-3 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600">Bridge status: {bridgeState}. {feedback}</p>
 
-            <textarea
-              value={cell.content}
-              onChange={(event) => onUpdateCell(cell.id, event.target.value)}
-              className="min-h-28 w-full rounded-md border border-slate-300 p-2 text-sm outline-none ring-blue-500 focus:ring"
-            />
-
-            {cell.output && (
-              <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
-                {cell.type === "markdown" ? <div className="space-y-2">{renderMarkdown(cell.output)}</div> : <pre>{cell.output}</pre>}
-              </div>
-            )}
-          </article>
-        ))}
-      </div>
+      <iframe id={IFRAME_ID} src={jupyterUrl} title="Embedded JupyterLab" className="h-full w-full rounded-lg border border-slate-200 bg-white" />
     </section>
   );
 }
