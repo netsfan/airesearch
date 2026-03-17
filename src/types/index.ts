@@ -13,6 +13,18 @@ export type DataSource = {
 
 export type NotebookCellType = "markdown" | "sql";
 
+export type JupyterNotebookCellType = "code" | "markdown" | "raw";
+
+export type NotebookContextCell = {
+  type: JupyterNotebookCellType;
+  source: string;
+};
+
+export type NotebookContext = {
+  path: string;
+  cells: NotebookContextCell[];
+};
+
 export type NotebookCell = {
   id: string;
   type: NotebookCellType;

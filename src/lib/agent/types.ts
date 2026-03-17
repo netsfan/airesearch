@@ -1,9 +1,9 @@
-import type { NotebookCellType } from "@/types";
+import type { NotebookCellType, NotebookContext } from "@/types";
 
 export type AgentInput = {
   message: string;
   selectedTable?: string;
-  notebookContext: Array<{ type: NotebookCellType; content: string }>;
+  notebookContext: NotebookContext | null;
 };
 
 export type AgentResponse = {

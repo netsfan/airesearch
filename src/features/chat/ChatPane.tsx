@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { ChatMessage, NotebookCell } from "@/types";
+import type { ChatMessage, NotebookContext } from "@/types";
 
 type Props = {
   messages: ChatMessage[];
   selectedTableName?: string;
-  notebookContext: NotebookCell[];
+  notebookContext: NotebookContext | null;
   onAppendMessage: (message: ChatMessage) => void;
   onInsertCell: (type: "markdown" | "sql", content: string) => void;
 };
@@ -34,7 +34,7 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
         body: JSON.stringify({
           message: trimmed,
           selectedTable: selectedTableName,
-          notebookContext: notebookContext.slice(-3).map((cell) => ({ type: cell.type, content: cell.content }))
+          notebookContext
         })
       });
 

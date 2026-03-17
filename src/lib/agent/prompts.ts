@@ -14,7 +14,7 @@ Rules:
 export function buildUserContext(input: AgentInput) {
   return {
     selectedTable: input.selectedTable ?? null,
-    notebookContext: input.notebookContext.slice(-3),
+    notebookContext: input.notebookContext,
     userMessage: input.message
   };
 }

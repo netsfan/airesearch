@@ -1,8 +1,43 @@
 import { runAgent } from "@/lib/agent/runAgent";
 import type { AgentInput } from "@/lib/agent/types";
+import type { NotebookContext } from "@/types";
 import { NextResponse } from "next/server";
 
 type RawAgentInput = Partial<AgentInput>;
+
+const MAX_CELLS = 8;
+const MAX_SOURCE_CHARS = 2000;
+
+function parseNotebookContext(value: unknown): NotebookContext | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const maybeContext = value as { path?: unknown; cells?: unknown };
+  if (typeof maybeContext.path !== "string" || !Array.isArray(maybeContext.cells)) {
+    return null;
+  }
+
+  const cells = maybeContext.cells
+    .filter((cell): cell is { type: "code" | "markdown" | "raw"; source: string } => {
+      if (!cell || typeof cell !== "object") return false;
+      const maybeCell = cell as { type?: unknown; source?: unknown };
+      return (
+        typeof maybeCell.source === "string" &&
+        (maybeCell.type === "code" || maybeCell.type === "markdown" || maybeCell.type === "raw")
+      );
+    })
+    .slice(-MAX_CELLS)
+    .map((cell) => ({
+      type: cell.type,
+      source: cell.source.slice(0, MAX_SOURCE_CHARS)
+    }));
+
+  return {
+    path: maybeContext.path,
+    cells
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -19,18 +54,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
     }
 
-    const notebookContext = Array.isArray(body.notebookContext)
-      ? body.notebookContext
-          .filter((cell): cell is { type: "markdown" | "sql"; content: string } => {
-            return Boolean(cell && typeof cell.content === "string" && (cell.type === "markdown" || cell.type === "sql"));
-          })
-          .slice(-3)
-      : [];
-
     const result = await runAgent({
       message: body.message,
       selectedTable: typeof body.selectedTable === "string" ? body.selectedTable : undefined,
-      notebookContext
+      notebookContext: parseNotebookContext(body.notebookContext)
     });
 
     return NextResponse.json(result);

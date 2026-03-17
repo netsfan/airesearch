@@ -1,3 +1,5 @@
+import type { NotebookContext } from "@/types";
+
 export type BridgeReadyState = "idle" | "connecting" | "ready" | "error";
 
 type HostBridgeLike = {
@@ -6,12 +8,14 @@ type HostBridgeLike = {
   executeCommand?: (commandId: string, args?: Record<string, unknown>) => Promise<unknown>;
   runCommand?: (commandId: string, args?: Record<string, unknown>) => Promise<unknown>;
   listCommands?: () => Promise<string[]>;
+  getNotebookContext?: () => Promise<NotebookContext | null>;
 };
 
 export type JupyterBridge = {
   waitUntilReady: () => Promise<void>;
   executeCommand: (commandId: string, args?: Record<string, unknown>) => Promise<unknown>;
   listAvailableCommands: () => Promise<string[]>;
+  getNotebookContext: () => Promise<NotebookContext | null>;
   insertAiGeneratedCode: (code: string) => Promise<void>;
 };
 
@@ -75,6 +79,10 @@ function createPostMessageFallback(iframeId: string): JupyterBridge {
       const result = await sendRpc("list-commands", {});
       return Array.isArray(result) ? (result as string[]) : [];
     },
+    getNotebookContext: async () => {
+      const result = await sendRpc("get-notebook-context", {});
+      return (result ?? null) as NotebookContext | null;
+    },
     insertAiGeneratedCode: async () => {
       throw new Error("TODO: implement a custom Jupyter command such as ai:insert-and-run-code in the iframe app.");
     }
@@ -95,6 +103,13 @@ function toBridge(hostBridge: HostBridgeLike): JupyterBridge {
     listAvailableCommands: async () => {
       if (!hostBridge.listCommands) return [];
       return hostBridge.listCommands();
+    },
+    getNotebookContext: async () => {
+      if (!hostBridge.getNotebookContext) {
+        return null;
+      }
+
+      return hostBridge.getNotebookContext();
     },
     insertAiGeneratedCode: async (code) => {
       await (hostBridge.executeCommand?.("ai:insert-and-run-code", { code }) ?? hostBridge.runCommand?.("ai:insert-and-run-code", { code }));

@@ -2,14 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createJupyterBridge, type BridgeReadyState, type JupyterBridge } from "@/lib/jupyter/bridge";
+import type { NotebookContext } from "@/types";
 
 type Props = {
   latestAiCode?: string;
+  onNotebookContextChange: (context: NotebookContext | null) => void;
 };
 
 const IFRAME_ID = "jupyterlab-iframe";
 
-export default function NotebookPane({ latestAiCode }: Props) {
+export default function NotebookPane({ latestAiCode, onNotebookContextChange }: Props) {
   const [bridgeState, setBridgeState] = useState<BridgeReadyState>("idle");
   const [bridge, setBridge] = useState<JupyterBridge | null>(null);
   const [feedback, setFeedback] = useState("Bridge not initialized yet.");
@@ -43,6 +45,38 @@ export default function NotebookPane({ latestAiCode }: Props) {
       isCancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!bridge) {
+      onNotebookContextChange(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const syncContext = async () => {
+      try {
+        const context = await bridge.getNotebookContext();
+        if (!isCancelled) {
+          onNotebookContextChange(context);
+        }
+      } catch {
+        if (!isCancelled) {
+          onNotebookContextChange(null);
+        }
+      }
+    };
+
+    void syncContext();
+    const intervalId = window.setInterval(() => {
+      void syncContext();
+    }, 1500);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [bridge, onNotebookContextChange]);
 
   const runCommand = async (commandId: string) => {
     if (!bridge) return;
