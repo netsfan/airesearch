@@ -12,9 +12,10 @@ export type AgentResponse = {
     type: NotebookCellType;
     content: string;
   };
+  pythonCode?: string;
 };
 
-export type ToolName = "list_tables" | "summarize_table" | "create_notebook_cell";
+export type ToolName = "list_tables" | "summarize_table" | "create_notebook_cell" | "generate_python_code";
 
 export type ToolCall = {
   name: ToolName;

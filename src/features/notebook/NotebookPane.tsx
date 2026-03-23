@@ -3,15 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { createJupyterBridge, type BridgeReadyState, type JupyterBridge } from "@/lib/jupyter/bridge";
 import type { NotebookContext } from "@/types";
+import { getNotebookContext } from "@/lib/jupyter/getNotebookContext";
 
 type Props = {
   latestAiCode?: string;
   onNotebookContextChange: (context: NotebookContext | null) => void;
+  onBridgeReady?: (insertCode: (code: string) => Promise<void>) => void;
 };
 
 const IFRAME_ID = "jupyterlab-iframe";
 
-export default function NotebookPane({ latestAiCode, onNotebookContextChange }: Props) {
+export default function NotebookPane({ latestAiCode, onNotebookContextChange, onBridgeReady }: Props) {
   const [bridgeState, setBridgeState] = useState<BridgeReadyState>("idle");
   const [bridge, setBridge] = useState<JupyterBridge | null>(null);
   const [feedback, setFeedback] = useState("Bridge not initialized yet.");
@@ -26,11 +28,16 @@ export default function NotebookPane({ latestAiCode, onNotebookContextChange }: 
       try {
         const nextBridge = await createJupyterBridge(IFRAME_ID);
         await nextBridge.waitUntilReady();
-        if (isCancelled) return;
+        if (isCancelled) {
+          return;
+        }
 
         setBridge(nextBridge);
         setBridgeState("ready");
         setFeedback("Connected to embedded JupyterLab.");
+        onBridgeReady?.(async (code: string) => {
+          await nextBridge.insertAiGeneratedCode(code);
+        });
       } catch (error) {
         if (isCancelled) return;
         const message = error instanceof Error ? error.message : "Unknown bridge initialization error";
@@ -56,6 +63,7 @@ export default function NotebookPane({ latestAiCode, onNotebookContextChange }: 
 
     const syncContext = async () => {
       try {
+        // const context = getNotebookContext();
         const context = await bridge.getNotebookContext();
         if (!isCancelled) {
           onNotebookContextChange(context);
@@ -108,7 +116,7 @@ export default function NotebookPane({ latestAiCode, onNotebookContextChange }: 
 
     try {
       await bridge.insertAiGeneratedCode(latestAiCode);
-      setFeedback("Sent code to custom Jupyter command ai:insert-and-run-code.");
+      setFeedback("Sent code to custom Jupyter command ai:insert-code-cell.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send AI code to notebook";
       setFeedback(message);

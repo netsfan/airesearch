@@ -38,6 +38,7 @@ export type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
+  pythonCode?: string;
 };
 
 export type NotebookMutation = {

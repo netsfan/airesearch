@@ -37,6 +37,7 @@ function readCell(panel: NotebookPanel, index: number): NotebookContextCell | nu
 }
 
 export function getNotebookContext(notebookTracker: INotebookTracker): NotebookContext | null {
+  console.log("getNotebookContext", notebookTracker.currentWidget);
   const panel = notebookTracker.currentWidget;
   const model = panel?.content.model;
 
@@ -49,6 +50,7 @@ export function getNotebookContext(notebookTracker: INotebookTracker): NotebookC
   for (let index = startIndex; index < totalCells; index += 1) {
     const contextCell = readCell(panel, index);
     if (contextCell) {
+      console.log("contextCell", contextCell);
       cells.push(contextCell);
     }
   }

@@ -1,7 +1,10 @@
 import type { NotebookContext } from "@/types";
+import { createBridge } from 'jupyter-iframe-commands-host';
+import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
 type BridgeApi = {
-  execute: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+  // execute: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+  execute: (command: string, args: ReadonlyPartialJSONObject) => Promise<unknown>;
   listCommands: () => Promise<string[]>;
   ready: Promise<void>;
 };
@@ -10,13 +13,12 @@ export type BridgeReadyState = "idle" | "connecting" | "ready" | "error";
 
 export type JupyterBridge = {
   waitUntilReady: () => Promise<void>;
-  executeCommand: (commandId: string, args?: Record<string, unknown>) => Promise<unknown>;
+  executeCommand: (commandId: string, args?: Record<string, string>) => Promise<unknown>;
   listAvailableCommands: () => Promise<string[]>;
   getNotebookContext: () => Promise<NotebookContext | null>;
   insertAiGeneratedCode: (code: string) => Promise<void>;
 };
 
-const PACKAGE_NAME = "jupyter-iframe-commands-host";
 const NOTEBOOK_CONTEXT_COMMAND = "ai:get-notebook-context";
 
 type NotebookContextCell = { type?: unknown; source?: unknown };
@@ -45,43 +47,40 @@ function parseNotebookContext(value: unknown): NotebookContext | null {
   };
 }
 
-async function loadHostPackage(): Promise<Record<string, unknown>> {
-  const dynamicImport = new Function("name", "return import(name);") as (name: string) => Promise<Record<string, unknown>>;
-  return dynamicImport(PACKAGE_NAME);
-}
-
 function toBridge(api: BridgeApi): JupyterBridge {
   return {
     waitUntilReady: async () => {
+      console.log("my waitUntilReady");
+      console.log("api", api);
+      console.log("api.ready", api.ready);
       await api.ready;
     },
     executeCommand: async (commandId, args) => {
-      return api.execute(commandId, args ?? {});
+      let myArgs: ReadonlyPartialJSONObject = args ?? {};
+      return api.execute(commandId, myArgs);
     },
     listAvailableCommands: async () => {
       return api.listCommands();
     },
     getNotebookContext: async () => {
       try {
+        // console.log("execute notebook context command");
         const result = await api.execute(NOTEBOOK_CONTEXT_COMMAND, {});
+        // console.log("result", result);
         return parseNotebookContext(result);
-      } catch {
+      } catch (error) {
+        console.error("error", error);
+        // log error
+        console.error("error executing notebook context command");
         return null;
       }
     },
     insertAiGeneratedCode: async (code) => {
-      await api.execute("ai:insert-and-run-code", { code });
+      await api.execute("ai:insert-code-cell", { code });
     }
   };
 }
 
 export async function createJupyterBridge(iframeId: string): Promise<JupyterBridge> {
-  const hostModule = await loadHostPackage();
-  const createBridge = hostModule.createBridge as ((config: { iframeId: string }) => BridgeApi) | undefined;
-
-  if (!createBridge) {
-    throw new Error("jupyter-iframe-commands-host is missing createBridge().");
-  }
-
   return toBridge(createBridge({ iframeId }));
 }

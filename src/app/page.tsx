@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import ChatPane from "@/features/chat/ChatPane";
 import DataSourcesPane from "@/features/data-sources/DataSourcesPane";
 import NotebookPane from "@/features/notebook/NotebookPane";
@@ -15,6 +15,7 @@ export default function Home() {
   const [selectedTable, setSelectedTable] = useState<TableData | undefined>(mockSources[0]?.tables[0]);
   const [notebookContext, setNotebookContext] = useState<NotebookContext | null>(null);
   const [latestAiCode, setLatestAiCode] = useState<string | undefined>(undefined);
+  const insertCodeRef = useRef<((code: string) => Promise<void>) | null>(null);
 
   const title = useMemo(() => "AI Research MVP", []);
 
@@ -26,6 +27,16 @@ export default function Home() {
     }
   };
 
+  const handleInsertPythonCode = useCallback(async (code: string) => {
+    if (insertCodeRef.current) {
+      await insertCodeRef.current(code);
+    }
+  }, []);
+
+  const handleBridgeReady = useCallback((insertFn: (code: string) => Promise<void>) => {
+    insertCodeRef.current = insertFn;
+  }, []);
+
   return (
     <main className="flex h-screen flex-col">
       <header className="border-b border-slate-200 bg-white px-6 py-3">
@@ -34,13 +45,14 @@ export default function Home() {
 
       <div className="grid flex-1 grid-cols-[280px_minmax(0,1fr)_360px] overflow-hidden">
         <DataSourcesPane sources={mockSources} selectedTable={selectedTable} onSelectTable={setSelectedTable} />
-        <NotebookPane latestAiCode={latestAiCode} onNotebookContextChange={setNotebookContext} />
+        <NotebookPane latestAiCode={latestAiCode} onNotebookContextChange={setNotebookContext} onBridgeReady={handleBridgeReady} />
         <ChatPane
           messages={messages}
           selectedTableName={selectedTable?.name}
           notebookContext={notebookContext}
           onAppendMessage={(message) => setMessages((previous) => [...previous, message])}
           onInsertCell={handleNotebookSuggestion}
+          onInsertPythonCode={handleInsertPythonCode}
         />
       </div>
     </main>

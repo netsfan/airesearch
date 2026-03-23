@@ -42,6 +42,7 @@ function parseNotebookContext(value: unknown): NotebookContext | null {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as RawAgentInput;
+    console.log("body", body);
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -54,10 +55,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
     }
 
+    const notebookContext = parseNotebookContext(body.notebookContext);
+    console.log("notebookContext", notebookContext);
+
     const result = await runAgent({
       message: body.message,
       selectedTable: typeof body.selectedTable === "string" ? body.selectedTable : undefined,
-      notebookContext: parseNotebookContext(body.notebookContext)
+      notebookContext,
     });
 
     return NextResponse.json(result);
