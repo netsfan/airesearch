@@ -40,6 +40,19 @@ export const agentTools = [
       required: ["cellType", "content"],
       additionalProperties: false
     }
+  },
+  {
+    type: "function",
+    name: "generate_python_code",
+    description: "Generate Python code to be inserted into the user's Jupyter notebook as a new code cell. Use this when the user asks for Python code, data analysis, plotting, or any task that should run in a notebook.",
+    parameters: {
+      type: "object",
+      properties: {
+        code: { type: "string", description: "The Python code to insert into a notebook cell" }
+      },
+      required: ["code"],
+      additionalProperties: false
+    }
   }
 ];
 
@@ -61,6 +74,11 @@ export function executeTool(call: ToolCall, context: AgentExecutionContext) {
     const requestedTableName = String(call.arguments.tableName ?? "").trim();
     const tableName = requestedTableName || context.selectedTable || "";
     return getTableSummary(tableName);
+  }
+
+  if (call.name === "generate_python_code") {
+    const code = String(call.arguments.code ?? "").trim();
+    return { pythonCode: code };
   }
 
   const cellType = call.arguments.cellType === "sql" ? "sql" : "markdown";

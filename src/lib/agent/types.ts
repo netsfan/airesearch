@@ -1,9 +1,9 @@
-import type { NotebookCellType } from "@/types";
+import type { NotebookCellType, NotebookContext } from "@/types";
 
 export type AgentInput = {
   message: string;
   selectedTable?: string;
-  notebookContext: Array<{ type: NotebookCellType; content: string }>;
+  notebookContext: NotebookContext | null;
 };
 
 export type AgentResponse = {
@@ -12,9 +12,10 @@ export type AgentResponse = {
     type: NotebookCellType;
     content: string;
   };
+  pythonCode?: string;
 };
 
-export type ToolName = "list_tables" | "summarize_table" | "create_notebook_cell";
+export type ToolName = "list_tables" | "summarize_table" | "create_notebook_cell" | "generate_python_code";
 
 export type ToolCall = {
   name: ToolName;

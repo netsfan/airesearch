@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import type { ChatMessage, NotebookCell } from "@/types";
+import type { ChatMessage, NotebookContext } from "@/types";
 
 type Props = {
   messages: ChatMessage[];
   selectedTableName?: string;
-  notebookContext: NotebookCell[];
+  notebookContext: NotebookContext | null;
   onAppendMessage: (message: ChatMessage) => void;
   onInsertCell: (type: "markdown" | "sql", content: string) => void;
+  onInsertPythonCode: (code: string) => void;
 };
 
 const createId = () => Math.random().toString(36).slice(2, 10);
 
-export default function ChatPane({ messages, selectedTableName, notebookContext, onAppendMessage, onInsertCell }: Props) {
+export default function ChatPane({ messages, selectedTableName, notebookContext, onAppendMessage, onInsertCell, onInsertPythonCode }: Props) {
   const [draft, setDraft] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
         body: JSON.stringify({
           message: trimmed,
           selectedTable: selectedTableName,
-          notebookContext: notebookContext.slice(-3).map((cell) => ({ type: cell.type, content: cell.content }))
+          notebookContext
         })
       });
 
@@ -43,7 +44,12 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
         throw new Error(payload.error ?? "Agent request failed");
       }
 
-      onAppendMessage({ id: `msg-${createId()}`, role: "assistant", content: payload.reply });
+      onAppendMessage({
+        id: `msg-${createId()}`,
+        role: "assistant",
+        content: payload.reply,
+        pythonCode: payload.pythonCode,
+      });
       if (payload.notebookCell?.content) {
         onInsertCell(payload.notebookCell.type, payload.notebookCell.content);
       }
@@ -64,6 +70,14 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
         {messages.map((message) => (
           <div key={message.id} className={`rounded-lg p-3 text-sm ${message.role === "assistant" ? "bg-slate-100" : "bg-blue-600 text-white"}`}>
             {message.content}
+            {message.pythonCode && (
+              <button
+                onClick={() => onInsertPythonCode(message.pythonCode!)}
+                className="mt-2 block rounded-md border border-green-300 bg-green-50 px-2 py-1 text-xs text-green-700 hover:bg-green-100"
+              >
+                Insert into notebook
+              </button>
+            )}
           </div>
         ))}
         {isLoading && <div className="rounded-lg bg-slate-100 p-3 text-sm">Thinking...</div>}
