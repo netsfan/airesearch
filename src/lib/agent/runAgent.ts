@@ -48,12 +48,19 @@ export async function runAgent(input: AgentInput): Promise<AgentResponse> {
   let previousResponseId: string | undefined;
   let createdNotebookCell: AgentResponse["notebookCell"];
   let generatedPythonCode: string | undefined;
+  const historyMessages: ResponseInputItem[] = (input.chatHistory ?? []).map((m) =>
+    m.role === "assistant"
+      ? { type: "message" as const, role: "assistant" as const, content: [{ type: "output_text" as const, text: m.content }] }
+      : { type: "message" as const, role: "user" as const, content: [{ type: "input_text" as const, text: m.content }] }
+  );
+
   let pendingInput: ResponseInputItem[] = [
     {
       type: "message",
       role: "system",
       content: [{ type: "input_text", text: buildSystemPrompt() }]
     },
+    ...historyMessages,
     {
       type: "message",
       role: "user",

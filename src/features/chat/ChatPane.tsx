@@ -37,7 +37,10 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
         body: JSON.stringify({
           message: trimmed,
           selectedTable: selectedTableName,
-          notebookContext
+          notebookContext,
+          chatHistory: messages
+            .filter((m) => m.content && !m.content.startsWith("Error:"))
+            .map((m) => ({ role: m.role, content: m.content })),
         })
       });
 

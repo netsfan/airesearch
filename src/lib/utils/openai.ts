@@ -7,6 +7,11 @@ export type ResponseInputItem =
       content: Array<{ type: "input_text"; text: string }>;
     }
   | {
+      type: "message";
+      role: "assistant";
+      content: Array<{ type: "output_text"; text: string }>;
+    }
+  | {
       type: "function_call_output";
       call_id: string;
       output: string;

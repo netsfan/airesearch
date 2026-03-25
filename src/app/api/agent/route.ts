@@ -1,5 +1,5 @@
 import { runAgent } from "@/lib/agent/runAgent";
-import type { AgentInput } from "@/lib/agent/types";
+import type { AgentInput, ChatHistoryMessage } from "@/lib/agent/types";
 import type { NotebookContext } from "@/types";
 import { NextResponse } from "next/server";
 
@@ -7,6 +7,28 @@ type RawAgentInput = Partial<AgentInput>;
 
 const MAX_CELLS = 8;
 const MAX_SOURCE_CHARS = 2000;
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_HISTORY_CONTENT_CHARS = 1000;
+
+function parseChatHistory(value: unknown): ChatHistoryMessage[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((item): item is { role: "user" | "assistant"; content: string } => {
+      if (!item || typeof item !== "object") return false;
+      const m = item as { role?: unknown; content?: unknown };
+      return (
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.content === "string" &&
+        m.content.length > 0
+      );
+    })
+    .slice(-MAX_HISTORY_MESSAGES)
+    .map((m) => ({
+      role: m.role,
+      content: m.content.slice(0, MAX_HISTORY_CONTENT_CHARS),
+    }));
+}
 
 function parseNotebookContext(value: unknown): NotebookContext | null {
   if (!value || typeof value !== "object") {
@@ -56,12 +78,13 @@ export async function POST(request: Request) {
     }
 
     const notebookContext = parseNotebookContext(body.notebookContext);
-    console.log("notebookContext", notebookContext);
+    const chatHistory = parseChatHistory(body.chatHistory);
 
     const result = await runAgent({
       message: body.message,
       selectedTable: typeof body.selectedTable === "string" ? body.selectedTable : undefined,
       notebookContext,
+      chatHistory,
     });
 
     console.log("result", result);

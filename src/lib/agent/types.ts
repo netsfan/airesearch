@@ -1,9 +1,15 @@
 import type { NotebookCellType, NotebookContext } from "@/types";
 
+export type ChatHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type AgentInput = {
   message: string;
   selectedTable?: string;
   notebookContext: NotebookContext | null;
+  chatHistory?: ChatHistoryMessage[];
 };
 
 export type AgentResponse = {
