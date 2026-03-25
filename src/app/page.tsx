@@ -15,6 +15,7 @@ export default function Home() {
   const [selectedTable, setSelectedTable] = useState<TableData | undefined>(mockSources[0]?.tables[0]);
   const [notebookContext, setNotebookContext] = useState<NotebookContext | null>(null);
   const [latestAiCode, setLatestAiCode] = useState<string | undefined>(undefined);
+  const [autoInsertCode, setAutoInsertCode] = useState(false);
   const insertCodeRef = useRef<((code: string) => Promise<void>) | null>(null);
 
   const title = useMemo(() => "AI Research MVP", []);
@@ -50,6 +51,8 @@ export default function Home() {
           messages={messages}
           selectedTableName={selectedTable?.name}
           notebookContext={notebookContext}
+          autoInsertCode={autoInsertCode}
+          onAutoInsertCodeChange={setAutoInsertCode}
           onAppendMessage={(message) => setMessages((previous) => [...previous, message])}
           onInsertCell={handleNotebookSuggestion}
           onInsertPythonCode={handleInsertPythonCode}

@@ -64,6 +64,8 @@ export async function POST(request: Request) {
       notebookContext,
     });
 
+    console.log("result", result);
+
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown server error";
