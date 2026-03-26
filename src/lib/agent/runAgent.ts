@@ -12,7 +12,7 @@ type ResponseOutputItem = {
   content?: Array<{ type?: string; text?: string }>;
 };
 
-const ALLOWED_TOOLS: ToolName[] = ["list_tables", "summarize_table", "create_notebook_cell", "generate_python_code"];
+const ALLOWED_TOOLS: ToolName[] = ["list_tables", "summarize_table", "generate_python_code"];
 
 function parseFunctionCall(item: ResponseOutputItem): { callId: string; call: ToolCall } | null {
   if (item.type !== "function_call" || !item.name || !item.call_id) return null;
@@ -46,7 +46,6 @@ function extractAssistantText(output: ResponseOutputItem[]): string {
 
 export async function runAgent(input: AgentInput): Promise<AgentResponse> {
   let previousResponseId: string | undefined;
-  let createdNotebookCell: AgentResponse["notebookCell"];
   let generatedPythonCode: string | undefined;
   const historyMessages: ResponseInputItem[] = (input.chatHistory ?? []).map((m) =>
     m.role === "assistant"
@@ -84,16 +83,12 @@ export async function runAgent(input: AgentInput): Promise<AgentResponse> {
     if (functionCalls.length === 0) {
       return {
         reply: extractAssistantText(output),
-        notebookCell: createdNotebookCell,
         pythonCode: generatedPythonCode,
       };
     }
 
     pendingInput = functionCalls.map(({ callId, call }) => {
       const result = executeTool(call, { selectedTable: input.selectedTable });
-      if (call.name === "create_notebook_cell" && "notebookCell" in result && result.notebookCell?.content) {
-        createdNotebookCell = result.notebookCell;
-      }
       if (call.name === "generate_python_code" && "pythonCode" in result && result.pythonCode) {
         generatedPythonCode = result.pythonCode;
       }
@@ -108,7 +103,6 @@ export async function runAgent(input: AgentInput): Promise<AgentResponse> {
 
   return {
     reply: "I could not finish the request in time.",
-    notebookCell: createdNotebookCell,
     pythonCode: generatedPythonCode,
   };
 }

@@ -11,8 +11,6 @@ export type DataSource = {
   tables: TableData[];
 };
 
-export type NotebookCellType = "markdown" | "sql";
-
 export type JupyterNotebookCellType = "code" | "markdown" | "raw";
 
 export type NotebookContextCell = {
@@ -25,13 +23,6 @@ export type NotebookContext = {
   cells: NotebookContextCell[];
 };
 
-export type NotebookCell = {
-  id: string;
-  type: NotebookCellType;
-  content: string;
-  output?: string;
-};
-
 export type ChatRole = "user" | "assistant";
 
 export type ChatMessage = {
@@ -41,7 +32,3 @@ export type ChatMessage = {
   pythonCode?: string;
 };
 
-export type NotebookMutation = {
-  type: NotebookCellType;
-  content: string;
-};

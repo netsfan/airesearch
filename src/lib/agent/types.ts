@@ -1,4 +1,4 @@
-import type { NotebookCellType, NotebookContext } from "@/types";
+import type { NotebookContext } from "@/types";
 
 export type ChatHistoryMessage = {
   role: "user" | "assistant";
@@ -14,14 +14,10 @@ export type AgentInput = {
 
 export type AgentResponse = {
   reply: string;
-  notebookCell?: {
-    type: NotebookCellType;
-    content: string;
-  };
   pythonCode?: string;
 };
 
-export type ToolName = "list_tables" | "summarize_table" | "create_notebook_cell" | "generate_python_code";
+export type ToolName = "list_tables" | "summarize_table" | "generate_python_code";
 
 export type ToolCall = {
   name: ToolName;

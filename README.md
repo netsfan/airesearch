@@ -9,10 +9,9 @@ Minimal single-app Next.js MVP with a tool-using data agent and an embedded Jupy
   - **Notebook** (center): embedded JupyterLab iframe with host-side bridge controls
   - **AI Chat** (right): conversational agent aware of the selected table, notebook context, and chat history
 - `POST /api/agent` route using the OpenAI Responses API with a multi-step tool loop (up to 6 steps)
-- 4 agent tools:
+- 3 agent tools:
   - `list_tables` — list available tables with metadata
   - `summarize_table` — return schema, row count, and sample rows for a table
-  - `create_notebook_cell` — produce a markdown or SQL cell for the notebook
   - `generate_python_code` — generate Python code that can be inserted into the notebook
 - Python code insertion into the active Jupyter notebook via `ai:insert-code-cell`
 - Auto-insert toggle: automatically insert AI-generated code, or show an "Insert into notebook" button per message

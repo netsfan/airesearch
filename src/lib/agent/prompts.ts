@@ -30,6 +30,7 @@ export function buildSystemPrompt() {
     - Assume the code will be reviewed by the user before execution unless explicitly told otherwise.
     - Do not say code has been executed unless execution actually happened through a tool.
     - If returning code, make it self-contained where practical.
+    - When you use the generate_python_code tool, do NOT repeat the code in your reply text. The code will be displayed separately in the UI. Just explain what the code does briefly.
 
     Response style:
     - Default to short answers.

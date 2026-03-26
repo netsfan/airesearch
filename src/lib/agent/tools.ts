@@ -1,6 +1,5 @@
 import { getTableSummary } from "@/lib/data/getTableSummary";
 import { mockSources } from "@/lib/data/mockTables";
-import type { NotebookCellType } from "@/types";
 import type { AgentExecutionContext, ToolCall } from "./types";
 
 export const agentTools = [
@@ -24,20 +23,6 @@ export const agentTools = [
         tableName: { type: "string", description: "Exact table name" }
       },
       required: ["tableName"],
-      additionalProperties: false
-    }
-  },
-  {
-    type: "function",
-    name: "create_notebook_cell",
-    description: "Create a notebook cell mutation.",
-    parameters: {
-      type: "object",
-      properties: {
-        cellType: { type: "string", enum: ["markdown", "sql"] },
-        content: { type: "string" }
-      },
-      required: ["cellType", "content"],
       additionalProperties: false
     }
   },
@@ -76,18 +61,6 @@ export function executeTool(call: ToolCall, context: AgentExecutionContext) {
     return getTableSummary(tableName);
   }
 
-  if (call.name === "generate_python_code") {
-    const code = String(call.arguments.code ?? "").trim();
-    return { pythonCode: code };
-  }
-
-  const cellType = call.arguments.cellType === "sql" ? "sql" : "markdown";
-  const content = String(call.arguments.content ?? "").trim();
-
-  return {
-    notebookCell: {
-      type: cellType as NotebookCellType,
-      content
-    }
-  };
+  const code = String(call.arguments.code ?? "").trim();
+  return { pythonCode: code };
 }

@@ -10,13 +10,34 @@ type Props = {
   autoInsertCode: boolean;
   onAutoInsertCodeChange: (value: boolean) => void;
   onAppendMessage: (message: ChatMessage) => void;
-  onInsertCell: (type: "markdown" | "sql", content: string) => void;
   onInsertPythonCode: (code: string) => void;
 };
 
 const createId = () => Math.random().toString(36).slice(2, 10);
 
-export default function ChatPane({ messages, selectedTableName, notebookContext, autoInsertCode, onAutoInsertCodeChange, onAppendMessage, onInsertCell, onInsertPythonCode }: Props) {
+/** Split message content into text and fenced code blocks for rendering. */
+function parseContentBlocks(text: string): Array<{ type: "text" | "code"; content: string; lang?: string }> {
+  const blocks: Array<{ type: "text" | "code"; content: string; lang?: string }> = [];
+  const regex = /```(\w*)\n?([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      blocks.push({ type: "text", content: text.slice(lastIndex, match.index) });
+    }
+    blocks.push({ type: "code", content: match[2].trimEnd(), lang: match[1] || undefined });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    blocks.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  return blocks;
+}
+
+export default function ChatPane({ messages, selectedTableName, notebookContext, autoInsertCode, onAutoInsertCodeChange, onAppendMessage, onInsertPythonCode }: Props) {
   const [draft, setDraft] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +79,6 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
       if (payload.pythonCode && autoInsertCode) {
         onInsertPythonCode(payload.pythonCode);
       }
-      if (payload.notebookCell?.content) {
-        onInsertCell(payload.notebookCell.type, payload.notebookCell.content);
-      }
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Unknown error";
       setError(message);
@@ -71,7 +89,7 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
   };
 
   return (
-    <aside className="flex h-full flex-col border-l border-slate-200 bg-white p-4">
+    <aside className="flex h-full min-h-0 flex-col border-l border-slate-200 bg-white p-4">
       <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">AI Chat</h2>
       <p className="mb-2 text-xs text-slate-500">Selected table: {selectedTableName ?? "none"}</p>
       <label className="mb-3 flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
@@ -86,20 +104,42 @@ export default function ChatPane({ messages, selectedTableName, notebookContext,
         </button>
         Auto-insert code
       </label>
-      <div className="flex-1 space-y-3 overflow-y-auto">
+      <div className="scrollbar-fade min-h-0 flex-1 space-y-2">
         {messages.map((message) => (
-          <div key={message.id} className={`rounded-lg p-3 text-sm ${message.role === "assistant" ? "bg-slate-100" : "bg-blue-600 text-white"}`}>
-            {message.content}
-            {message.pythonCode && !autoInsertCode && (
-              <button
-                onClick={() => onInsertPythonCode(message.pythonCode!)}
-                className="mt-2 block rounded-md border border-green-300 bg-green-50 px-2 py-1 text-xs text-green-700 hover:bg-green-100"
-              >
-                Insert into notebook
-              </button>
-            )}
-            {message.pythonCode && autoInsertCode && (
-              <span className="mt-2 block text-xs text-green-600">✓ Inserted into notebook</span>
+          <div key={message.id} className={`rounded-md px-2.5 py-2 text-sm ${message.role === "assistant" ? "bg-slate-100" : "bg-blue-600 text-white"}`}>
+            {message.role === "assistant"
+              ? parseContentBlocks(message.content).map((block, i) =>
+                  block.type === "code" ? (
+                    <pre key={i} className="my-2 overflow-x-auto rounded-md bg-slate-800 p-3 text-xs text-slate-100">
+                      <code>{block.content}</code>
+                    </pre>
+                  ) : (
+                    <span key={i} className="whitespace-pre-wrap">{block.content}</span>
+                  )
+                )
+              : message.content}
+            {message.pythonCode && (
+              <div className="mt-2 rounded-md border border-slate-200 bg-slate-800 p-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Python</span>
+                  <div className="flex gap-2">
+                    {!autoInsertCode && (
+                      <button
+                        onClick={() => onInsertPythonCode(message.pythonCode!)}
+                        className="rounded border border-green-400/30 bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-400 hover:bg-green-500/20"
+                      >
+                        Insert into notebook
+                      </button>
+                    )}
+                    {autoInsertCode && (
+                      <span className="text-[10px] text-green-400">✓ Inserted</span>
+                    )}
+                  </div>
+                </div>
+                <pre className="overflow-x-auto text-xs leading-relaxed text-slate-100">
+                  <code>{message.pythonCode}</code>
+                </pre>
+              </div>
             )}
           </div>
         ))}

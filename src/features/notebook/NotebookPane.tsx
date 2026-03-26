@@ -6,14 +6,13 @@ import type { NotebookContext } from "@/types";
 import { getNotebookContext } from "@/lib/jupyter/getNotebookContext";
 
 type Props = {
-  latestAiCode?: string;
   onNotebookContextChange: (context: NotebookContext | null) => void;
   onBridgeReady?: (insertCode: (code: string) => Promise<void>) => void;
 };
 
 const IFRAME_ID = "jupyterlab-iframe";
 
-export default function NotebookPane({ latestAiCode, onNotebookContextChange, onBridgeReady }: Props) {
+export default function NotebookPane({ onNotebookContextChange, onBridgeReady }: Props) {
   const [bridgeState, setBridgeState] = useState<BridgeReadyState>("idle");
   const [bridge, setBridge] = useState<JupyterBridge | null>(null);
   const [feedback, setFeedback] = useState("Bridge not initialized yet.");
@@ -108,21 +107,6 @@ export default function NotebookPane({ latestAiCode, onNotebookContextChange, on
     }
   };
 
-  const sendAiCodeStub = async () => {
-    if (!bridge || !latestAiCode) {
-      setFeedback("No AI code is queued for notebook insertion yet.");
-      return;
-    }
-
-    try {
-      await bridge.insertAiGeneratedCode(latestAiCode);
-      setFeedback("Sent code to custom Jupyter command ai:insert-code-cell.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to send AI code to notebook";
-      setFeedback(message);
-    }
-  };
-
   return (
     <section className="flex h-full flex-col border-x border-slate-200 bg-slate-50 p-3">
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -138,9 +122,6 @@ export default function NotebookPane({ latestAiCode, onNotebookContextChange, on
         </button>
         <button onClick={listCommands} disabled={bridgeState !== "ready"} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">
           List commands
-        </button>
-        <button onClick={sendAiCodeStub} disabled={bridgeState !== "ready" || !latestAiCode} className="rounded-md border border-blue-300 bg-blue-50 px-2 py-1 text-xs text-blue-700">
-          Send latest AI code (stub)
         </button>
       </div>
 

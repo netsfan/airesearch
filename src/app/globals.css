@@ -9,3 +9,32 @@
 body {
   @apply bg-slate-100 text-slate-900;
 }
+
+/* Translucent scrollbar that fades out when idle */
+.scrollbar-fade {
+  overflow-y: auto;
+  padding-right: 5px;
+  margin-right: -5px;
+}
+
+.scrollbar-fade::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scrollbar-fade::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-fade::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0);
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+.scrollbar-fade:hover::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.scrollbar-fade::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+}
